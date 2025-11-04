@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class MultiHeadSelfAttention(nn.Module):
-    def __init__(self, d_model, num_heads, masked=False):
+    def __init__(self, d_model, num_heads, masked=False, dropout=0.1):
         super(MultiHeadSelfAttention, self).__init__()
         self.d_model = d_model
         self.num_heads = num_heads
@@ -19,6 +19,9 @@ class MultiHeadSelfAttention(nn.Module):
 
         # final Output layer
         self.O_W = nn.Linear(d_model, d_model, bias=False)
+
+        self.dropout_attn = nn.Dropout(dropout)
+        self.dropout_out = nn.Dropout(dropout)
 
     def forward(self, x, padding_mask=None):
         batch_size, seq_length, _ = x.shape
@@ -48,12 +51,14 @@ class MultiHeadSelfAttention(nn.Module):
             pad_mask = padding_mask.unsqueeze(1).unsqueeze(2) # [batch_size, 1, 1, seq_len]
             score = score.masked_fill(pad_mask, float('-inf')) # [batch_size, num_heads, seq_len, seq_len]
 
-        atention_weight = F.softmax(score, dim=-1) # [batch_size, num_heads, seq_len, seq_len]
+        attention_weight = F.softmax(score, dim=-1) # [batch_size, num_heads, seq_len, seq_len]
+        attention_weight = self.dropout_attn(attention_weight)
 
-        attention = torch.matmul(atention_weight, V_heads) # shape: [batch_size, num_heads, seq_length, d_head]
+        attention = torch.matmul(attention_weight, V_heads) # shape: [batch_size, num_heads, seq_length, d_head]
 
         attention = attention.transpose(1,2).reshape(batch_size, seq_length, self.d_model) # shape: [batch_size, seq_length, d_model]
 
         output = self.O_W(attention)    # shape: [batch_size, seq_length, d_model]
+        output = self.dropout_out(output)
         return output
 

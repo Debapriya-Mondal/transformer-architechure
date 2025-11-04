@@ -4,15 +4,15 @@ from .encoder.encoder import Encoder
 from .decoder.decoder import Decoder
 
 class Transformer(nn.Module):
-    def __init__(self, tokenizer, d_model, num_heads, num_layers):
+    def __init__(self, tokenizer, d_model, num_heads, num_layers, dropout=0.1):
         super(Transformer, self).__init__()
         self.tokenizer = tokenizer
         self.vocab_size = tokenizer.vocab_size()
         self.d_model = d_model
         self.num_heads = num_heads
         self.num_layers = num_layers
-        self.encoder = Encoder(self.vocab_size, d_model, num_heads, num_layers)
-        self.decoder = Decoder(self.vocab_size, d_model, num_heads, num_layers)
+        self.encoder = Encoder(self.vocab_size, d_model, num_heads, num_layers, dropout)
+        self.decoder = Decoder(self.vocab_size, d_model, num_heads, num_layers, dropout)
 
     def forward(self, x, y):
 
