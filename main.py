@@ -18,18 +18,24 @@ def main():
     )
     
     train = TranslationDataset("dataset/train_en_bn.csv", tokenizer)
-    train = torch.utils.data.Subset(train, indices=range(0, 5000))
-    print("size of data set: ", len(train))
+    train = torch.utils.data.Subset(train, indices=range(0, 1000))
+    val = TranslationDataset("dataset/test_en_bn.csv", tokenizer)
+    val = torch.utils.data.Subset(val, indices=range(0, 100))
+    print("size of train data set: ", len(train))
+    print("size of val data set: ", len(val))
 
     train_loader = DataLoader(train, batch_size=32, shuffle=True, collate_fn=collate_fn)
+    val_loader = DataLoader(val, batch_size=32, shuffle=True, collate_fn=collate_fn)
     print("train_loader size: ", len(train_loader))
-    x, y = next(iter(train_loader))
-    print("x shape: ", x.shape)
-    print("y shape: ", y.shape)
+    print("val_loader size: ", len(train_loader))
+
+    # x, y = next(iter(train_loader))
+    # print("x shape: ", x.shape)
+    # print("y shape: ", y.shape)
 
     trainer = TransformerTrain(tokenizer, model, lr=3e-4)
-    trainer.train(train_loader, 3)
-    trainer.save("weights.pt")
+    trainer.train(train_loader, val_loader, 2, 500)
+    # trainer.save("weights")
 
     
     # loaded_state_dict = torch.load('weights.pt', weights_only=True)

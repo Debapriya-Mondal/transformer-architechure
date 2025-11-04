@@ -8,6 +8,9 @@ class Transformer(nn.Module):
         super(Transformer, self).__init__()
         self.tokenizer = tokenizer
         self.vocab_size = tokenizer.vocab_size()
+        self.d_model = d_model
+        self.num_heads = num_heads
+        self.num_layers = num_layers
         self.encoder = Encoder(self.vocab_size, d_model, num_heads, num_layers)
         self.decoder = Decoder(self.vocab_size, d_model, num_heads, num_layers)
 
