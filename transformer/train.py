@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 from tqdm.auto import tqdm
 from datetime import datetime
+import matplotlib.pyplot as plt
 
 class TransformerTrain:
     def __init__(self, tokenizer, model, lr=0.001):
@@ -24,15 +25,13 @@ class TransformerTrain:
 
         self.history = {}
 
-    def warmup_scheduler(self, optimizer, warmup_steps, total_steps):
-        """
-        Creates a LambdaLR scheduler with warmup + linear decay.
-        """
+    def warmup_scheduler(self, optimizer, d_model, warmup_steps):
         def lr_lambda(step):
-            if step < warmup_steps:
-                return step / max(1, warmup_steps)
-            return max(0.0, (total_steps - step) / max(1, total_steps - warmup_steps))
-
+            step = max(step, 1)
+            return (d_model ** -0.5) * min(
+                step ** -0.5,
+                step * (warmup_steps ** -1.5)
+            )
         return torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
 
     def train_single_epoch(self, data_loader, optimizer, scheduler, criterion):
@@ -98,11 +97,10 @@ class TransformerTrain:
 
     def train(self, train_loader, val_loader=None, epochs=10, warmup_steps=4000):
 
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
-        criterion = nn.CrossEntropyLoss(ignore_index=self.tokenizer.pad_id())
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr, betas=[0.9, 0.98], eps=1e-9)
+        criterion = nn.CrossEntropyLoss(ignore_index=self.tokenizer.pad_id(), label_smoothing=0.1)
 
-        total_steps = epochs * len(train_loader)
-        scheduler = self.warmup_scheduler(optimizer, warmup_steps, total_steps)
+        scheduler = self.warmup_scheduler(optimizer, self.d_model, warmup_steps)
 
         self.epochs = epochs
 
@@ -137,6 +135,7 @@ class TransformerTrain:
                 self.history['train_loss'].append(train_loss)
 
         self.save()
+        self.plot_loss()
 
 
     def save(self):
@@ -164,6 +163,17 @@ class TransformerTrain:
         df.to_csv(os.path.join(folder_name, "training_log.csv"), index=False)
 
         print(f"model save in {folder_name}")
+
+    def plot_loss(self):
+        plt.figure(figsize=(8,5))
+        plt.plot(self.history["epochs"], self.history["train_loss"], label="Train Loss", color="red")
+        plt.plot(self.history["epochs"], self.history["val_loss"], label="Val Loss", color="blue")
+        plt.xlabel("Epochs")
+        plt.ylabel("Loss")
+        plt.legend()
+        plt.title("Training vs Validation Loss")
+        plt.grid(True)
+        plt.show()
 
         
 
