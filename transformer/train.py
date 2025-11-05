@@ -24,6 +24,8 @@ class TransformerTrain:
         self.num_layers = model.num_layers
 
         self.history = {}
+        self.folder_name = None
+        self.val_loader = None
 
     def warmup_scheduler(self, optimizer, d_model, warmup_steps):
         def lr_lambda(step):
@@ -102,6 +104,9 @@ class TransformerTrain:
 
         scheduler = self.warmup_scheduler(optimizer, self.d_model, warmup_steps)
 
+        self.val_loader=val_loader
+
+
         self.epochs = epochs
 
         if val_loader:
@@ -120,18 +125,21 @@ class TransformerTrain:
         for epoch in range(epochs):
             train_loss = self.train_single_epoch(train_loader, optimizer, scheduler, criterion)
             self.avg_train_loss = train_loss
+            
+            current_lr = optimizer.param_groups[0]['lr']
 
             self.history['epochs'].append(epoch+1)
+
 
             if val_loader is not None:
                 val_loss = self.validate_single_epoch(val_loader, criterion)
                 self.avg_val_loss = val_loss
-                print(f"Epoch {epoch+1}/{epochs} - train: {train_loss:.4f} - val: {val_loss:.4f}")
+                print(f"Epoch {epoch+1}/{epochs} - LR: {current_lr:.8f} - train: {train_loss:.4f} - val: {val_loss:.4f}")
                 self.history['train_loss'].append(train_loss)
                 self.history['val_loss'].append(val_loss)
                 
             else:
-                print(f"Epoch {epoch+1}/{epochs} - train: {train_loss:.4f}")
+                print(f"Epoch {epoch+1}/{epochs} - LR: {current_lr:.8f} - train: {train_loss:.4f}")
                 self.history['train_loss'].append(train_loss)
 
         self.save()
@@ -151,29 +159,40 @@ class TransformerTrain:
             "trained_at": trained_at
         }
 
-        folder_name = os.path.join("weights", f"run_id_{trained_at}")
-        file_name = os.path.join(folder_name, f"model_weights.pt")
-        os.makedirs(folder_name, exist_ok=True)
+        self.folder_name = os.path.join("weights", f"run_id_{trained_at}")
+        file_name = os.path.join(self.folder_name, f"model_weights.pt")
+        os.makedirs(self.folder_name, exist_ok=True)
 
         torch.save(self.model.state_dict(), file_name)
-        with open(os.path.join(folder_name, "metadata.json"), "w") as f:
+        with open(os.path.join(self.folder_name, "metadata.json"), "w") as f:
             json.dump(metadata, f, indent=4)
 
         df = pd.DataFrame(self.history)
-        df.to_csv(os.path.join(folder_name, "training_log.csv"), index=False)
+        df.to_csv(os.path.join(self.folder_name, "training_log.csv"), index=False)
 
-        print(f"model save in {folder_name}")
+        print(f"model save in {self.folder_name}")
 
     def plot_loss(self):
         plt.figure(figsize=(8,5))
-        plt.plot(self.history["epochs"], self.history["train_loss"], label="Train Loss", color="red")
-        plt.plot(self.history["epochs"], self.history["val_loss"], label="Val Loss", color="blue")
-        plt.xlabel("Epochs")
-        plt.ylabel("Loss")
-        plt.legend()
-        plt.title("Training vs Validation Loss")
-        plt.grid(True)
-        plt.show()
+        if self.val_loader:
+            plt.plot(self.history["epochs"], self.history["train_loss"], label="Train Loss", color="red")
+            plt.plot(self.history["epochs"], self.history["val_loss"], label="Val Loss", color="blue")
+            plt.xlabel("Epochs")
+            plt.ylabel("Loss")
+            plt.legend()
+            plt.title("Training vs Validation Loss")
+            plt.grid(True)
+            plt.savefig(os.path.join(self.folder_name, "loss_plot.png"))
+            plt.show()
+        else:
+            plt.plot(self.history["epochs"], self.history["train_loss"], label="Train Loss", color="red")
+            plt.xlabel("Epochs")
+            plt.ylabel("Loss")
+            plt.legend()
+            plt.title("Training Loss")
+            plt.grid(True)
+            plt.savefig(os.path.join(self.folder_name, "loss_plot.png"))
+            plt.show()
 
         
 

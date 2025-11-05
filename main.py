@@ -17,9 +17,9 @@ def main():
         num_layers=6
     )
     
-    train = TranslationDataset("dataset/train_en_bn.csv", tokenizer)
+    train = TranslationDataset("dataset/train_english_to_bangla.csv", tokenizer)
     train = torch.utils.data.Subset(train, indices=range(0, 1000))
-    val = TranslationDataset("dataset/test_en_bn.csv", tokenizer)
+    val = TranslationDataset("dataset/test_english_to_bangla.csv", tokenizer)
     val = torch.utils.data.Subset(val, indices=range(0, 100))
     print("size of train data set: ", len(train))
     print("size of val data set: ", len(val))
